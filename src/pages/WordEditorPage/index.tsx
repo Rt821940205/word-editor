@@ -1,14 +1,14 @@
 // src/pages/WordEditorPage/index.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Typography, Button, Space, Spin } from 'antd';
+import { Typography, Button, Space, Spin, message } from 'antd';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { fetchWordById } from '../../api';
 import jsPDF from 'jspdf';
-import mammoth from 'mammoth';
-import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
+import { saveAs } from 'file-saver';
+import { asBlob } from 'html-docx-js-typescript'
 
 const { Title } = Typography;
 
@@ -62,15 +62,19 @@ const WordEditorPage: React.FC = () => {
     fetchWord();
   }, [id]);
 
-  const handleExportToWord = () => {
-    const blob = new Blob([content], { type: 'application/html' });
-    mammoth.convertToHtml({ path: URL.createObjectURL(blob) })
-      .then(result => {
-        const htmlContent = result.value;
-        const doc = new File([htmlContent], `document_${id}.docx`, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-        saveAs(doc, `document_${id}.docx`);
-      })
-      .catch(err => console.error(err));
+  const handleExportToWord = async () => {
+    asBlob(content).then(data => {
+      // 检查data是否为Blob类型，如果不是则转换为Blob
+      let blobData: Blob;
+      if (data instanceof Blob) {
+        blobData = data;
+      } else {
+        // 假设data为Buffer或其他类型，转换为Blob
+        blobData = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      }
+      console.log('data', blobData);
+      saveAs(blobData, 'file.docx'); // 保存为docx文件
+    });
   };
 
   const handleExportToPDF = () => {
@@ -90,6 +94,17 @@ const WordEditorPage: React.FC = () => {
     }
   };
 
+  const handleSave = async () => {
+    console.log('content', content);
+    // try {
+    //   await updateWordContent(id!, content);
+    //   message.success('Document saved successfully!');
+    // } catch (error) {
+    //   console.error('Error saving document:', error);
+    //   message.error('Failed to save document.');
+    // }
+  };
+
   return (
     <div style={{ padding: '20px' }}>
       <Title level={2}>Edit Word Document</Title>
@@ -100,10 +115,13 @@ const WordEditorPage: React.FC = () => {
             onChange={setContent}
             modules={modules}
             formats={formats}
-            readOnly={role !== 'admin'}
+            readOnly={false} // Ensure Quill is editable
           />
         </div>
         <Space style={{ marginTop: '20px' }}>
+          <Button type="primary" onClick={handleSave}>
+            Save
+          </Button>
           <Button type="primary" onClick={handleExportToWord}>
             Export to Word
           </Button>
@@ -117,3 +135,6 @@ const WordEditorPage: React.FC = () => {
 };
 
 export default WordEditorPage;
+
+
+
